@@ -4,14 +4,21 @@
 	import Overlay from "./components/Overlay.svelte";
 	import Sidebar from "./components/Sidebar.svelte";
 	import PlotView from "./components/PlotView.svelte";
-	
-    const DELAY_FADE_OUT: number = 4000;
 
-	import { httpgd, httpgd_plots, httpgd_selected_plot, httpgd_connected, httpgd_renderers, show_sidebar } from './stores.js';
+	const DELAY_FADE_OUT: number = 4000;
+
+	import {
+		httpgd,
+		httpgd_plots,
+		httpgd_selected_plot,
+		httpgd_connected,
+		httpgd_renderers,
+		show_sidebar,
+	} from "./stores.js";
 
 	import { Httpgd } from "httpgd";
-import { Timer } from "./utils";
-import { onDestroy } from "svelte";
+	import { Timer } from "./utils";
+	import { onDestroy } from "svelte";
 
 	const sparams = new URL(window.location.href).searchParams;
 
@@ -22,33 +29,42 @@ import { onDestroy } from "svelte";
 	const sidebar = sparams.has("sidebar")
 		? sparams.get("sidebar") == "0"
 		: false;
-	
 
-	onDestroy(httpgd.subscribe((httpgd) => {
-		if (!httpgd) { return; }
-		httpgd.onPlotsChanged((newState) => {
-			$httpgd_plots = newState;
-			if (newState?.plots.length > 0) {
-				$httpgd_selected_plot = newState.plots[newState.plots.length-1].id;
+	onDestroy(
+		httpgd.subscribe((httpgd) => {
+			if (!httpgd) {
+				return;
 			}
-		});
-		httpgd.onConnectionChanged((connected) => {
-			$httpgd_connected = connected;
-		});
-		httpgd.connect().then(() => {
-			console.log("Connected to " + httpgd.getInfo().version);
-			$httpgd_renderers = httpgd.getRenderers();
-		}).catch((error) => {
-			console.log(error);
-		});
-	}));
+			httpgd.onPlotsChanged((newState) => {
+				$httpgd_plots = newState;
+				if (newState?.plots.length > 0) {
+					$httpgd_selected_plot =
+						newState.plots[newState.plots.length - 1].id;
+				}
+			});
+			httpgd.onConnectionChanged((connected) => {
+				$httpgd_connected = connected;
+			});
+			httpgd
+				.connect()
+				.then(() => {
+					console.log("Connected to " + httpgd.getInfo().version);
+					$httpgd_renderers = httpgd.getRenderers();
+				})
+				.catch((error) => {
+					console.log(error);
+				});
+		})
+	);
 
 	$httpgd = new Httpgd(hgd, token, ws);
 
-
 	let fadeout_toolbar = false;
 
-	const fadeout_timer = new Timer(() => fadeout_toolbar = true, DELAY_FADE_OUT);
+	const fadeout_timer = new Timer(
+		() => (fadeout_toolbar = true),
+		DELAY_FADE_OUT
+	);
 	onDestroy(() => fadeout_timer.stop());
 
 	fadeout_timer.start();
@@ -60,14 +76,18 @@ import { onDestroy } from "svelte";
 	function mouseleave() {
 		fadeout_timer.finish();
 	}
-
 </script>
 
 <div id="container">
 	<Overlay />
 	<ExportDialog />
-	<div id="plotarea" class:nohist={!$show_sidebar} on:mousemove={() => mousemove()} on:mouseleave={() => mouseleave()}>
-		<Toolbar bind:fadeout={fadeout_toolbar}/>
+	<div
+		id="plotarea"
+		class:nohist={!$show_sidebar}
+		on:mousemove={() => mousemove()}
+		on:mouseleave={() => mouseleave()}
+	>
+		<Toolbar bind:fadeout={fadeout_toolbar} />
 		<!-- <div class="loader"></div> -->
 		<PlotView />
 	</div>

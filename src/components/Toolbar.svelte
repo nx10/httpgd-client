@@ -230,7 +230,7 @@
             >
         </span>
         <span>
-            <ToolbarItem title="Delete" shortcut="D" on:click={remove_selected}
+            <ToolbarItem title="Delete" shortcut="D" danger on:click={remove_selected}
                 >{@html iconCross}</ToolbarItem
             >
         </span>
@@ -272,6 +272,7 @@
                     <ToolbarListItem
                         title="Clear all plots"
                         shortcut="Alt+D"
+                        danger
                         on:click={close_drop_and(clear_plots)}
                         >{@html iconTrash}</ToolbarListItem
                     >

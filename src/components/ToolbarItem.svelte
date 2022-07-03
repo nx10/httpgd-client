@@ -1,9 +1,10 @@
 <script lang="ts">
     export let title: string;
     export let shortcut: string;
+    export let danger: boolean = false;
 </script>
 
-<span title={`${title} (${shortcut})`} class="tooltip" on:click>
+<span title={`${title} (${shortcut})`} class="tooltip" class:danger on:click>
     <slot />
     <span class="tooltiptext">{title}</span>
 </span>
@@ -17,6 +18,9 @@
         &:hover {
             color: $highlight-color;
         }
+        &.danger:hover {
+                fill: $warn-color;
+            }
 
         position: relative;
         display: inline-block;
@@ -67,6 +71,10 @@
             &:hover {
                 fill: $highlight-color;
             }
+        }
+        
+        &.danger > :global(.icon:hover) {
+                fill: $warn-color;
         }
     }
 </style>

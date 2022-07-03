@@ -1,9 +1,10 @@
 <script lang="ts">
     export let title: string;
     export let shortcut: string;
+    export let danger: boolean = false;
 </script>
 
-<span title={`${title} (${shortcut})`} on:click>
+<span title={`${title} (${shortcut})`} class:danger on:click>
     <slot />
     <span class="title">{title}</span>
     <span class="drop-kbd">{shortcut}</span>
@@ -18,7 +19,6 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        //white-space: pre;
         box-sizing: border-box;
         fill: rgba(0, 0, 0, 0.5);
 
@@ -44,6 +44,24 @@
             color: rgba(0, 0, 0, 0.3);
             flex: 0;
         }
+        
+        & > .drop-kbd:hover {
+            color: rgba(0, 0, 0, 0.3);
+        }
+
+        &.danger:hover {
+            color: $warn-color;
+            fill: $warn-color;
+
+            & > .title:hover {
+                color: $warn-color;
+            }
+
+
+            & > :global(svg) {
+                fill: $warn-color;
+            }
+        }
 
         &:hover {
             background: #ebebeb;
@@ -53,9 +71,6 @@
             }
         }
 
-        &.warn-hover:hover {
-            color: $warn-color;
-            fill: $warn-color;
-        }
+        
     }
 </style>
