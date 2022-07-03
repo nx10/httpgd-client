@@ -1,10 +1,12 @@
 # httpgd client
 
-Browser client for [`httpgd`](https://github.com/nx10/httpgd). This is the official client built with [Svelte](https://svelte.dev/) and included in `httpgd` 2.0.
+Browser client for [`httpgd`](https://github.com/nx10/httpgd). This is the official client built with [Svelte](https://svelte.dev/) and will be included included in `httpgd` 2.0.
 
 > The client was originally built with a custom tech stack and developed inside the httpgd repository. Separating it in its own repo and porting it to Svelte specifically, should increase maintainability without noticable performace losses.
 
-## Features / porting progress
+This client implementation is opinionated. See the [httpgd NPM package](https://github.com/nx10/httpgd-js) for unopinionated / general connection code to reuse in third party clients.
+
+## Features / port progress
 
 - &#x2705; Connection status
 - &#x2705; Navigation
@@ -14,6 +16,7 @@ Browser client for [`httpgd`](https://github.com/nx10/httpgd). This is the offic
 - &#x1F527; Sidebar / thumbnail history
 - &#x274C; Code cleanup
 
+&#x2705; Done | &#x1F527; In progress | &#x274C; Coming soon
 
 ## Development
 
