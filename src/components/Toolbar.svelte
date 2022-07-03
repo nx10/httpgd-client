@@ -1,9 +1,22 @@
 <script lang="ts">
     import ToolbarItem from "./ToolbarItem.svelte";
     import ToolbarListItem from "./ToolbarListItem.svelte";
-    import { data } from "../toolbarData";
-    import { plots, selected_plot } from "../stores";
-    import { open_modal } from "./ExportDialog.svelte";
+    import {
+        httpgd,
+        httpgd_plots,
+        httpgd_renderers,
+        httpgd_selected_plot,
+        show_sidebar,
+        zoom,
+        zoom_level,
+        zoom_factor,
+        zoom_percent,
+        plot_width,
+        plot_height,
+    } from "../stores";
+    import { KbdShortcutRegisty } from '../keyboard';
+    import { copyClipboardPNG, copyImgSVGasPNG, downloadImgPNG, downloadImgSVG, downloadURL } from '../utils';
+    import { open_export_dialog, export_dialog_visible } from "./ExportDialog.svelte";
 
     import iconArrowLeft from "../icons/arrow-left.svg";
     import iconArrowRight from "../icons/arrow-right.svg";
@@ -17,51 +30,213 @@
     import iconMagnifyPlus from "../icons/magnify-plus.svg";
     import iconTrash from "../icons/trash.svg";
     import iconVdots from "../icons/vdots.svg";
+    import { get_image_element } from "./PlotView.svelte";
 
-    function showDropdown(e: MouseEvent) {
-        (e.target as HTMLElement).classList.add("drop-open");
+    let dropopen: boolean = false;
+    export let fadeout: boolean = false;
+
+    function showDropdown() {
+        dropopen = true;
     }
-    function hideDropdown(e: MouseEvent) {
-        (e.target as HTMLElement).classList.remove("drop-open");
+    function hideDropdown() {
+        dropopen = false;
     }
 
-    $: plot_index = $plots?.plots.findIndex((e) => e.id == $selected_plot);
-    $: plot_count = $plots?.plots.length;
+    function zoomReset() {
+        $zoom_level = 0;
+    }
 
-    function click_export() {
-        open_modal();
+    $: plot_index = $httpgd_plots?.plots.findIndex(
+        (e) => e.id == $httpgd_selected_plot
+    );
+    $: plot_count = $httpgd_plots?.plots.length;
+
+    $: plot_index_nav_string = `${
+        plot_index !== undefined ? plot_index + 1 : 0
+    }/${plot_count || 0}`;
+
+    
+    function plots_navigate(offset: number) {
+        if (!$httpgd_plots?.plots?.length) return;
+        let index = plot_index + offset;
+        while (index < 0) {
+            index += $httpgd_plots?.plots?.length;
+        }
+        $httpgd_selected_plot = $httpgd_plots.plots[index % $httpgd_plots.plots.length].id
+    }
+
+    function plots_navigate_newest() {
+        if (!$httpgd_plots?.plots?.length) return;
+        $httpgd_selected_plot = $httpgd_plots.plots[$httpgd_plots.plots.length - 1].id;
+    }
+
+    function toggle_sidebar() {
+        $show_sidebar = !$show_sidebar;
+    }
+
+    function clear_plots() {
+        $httpgd?.clearPlots();
+    }
+    function remove_selected() {
+        $httpgd.removePlot({
+            id: $httpgd_selected_plot
+        });
+    }
+
+    function downloadSVG(): void {
+        downloadImgSVG(get_image_element(), 'plot.svg');
+    }
+
+    $: png_renderer_available = $httpgd_renderers?.findIndex((v) => v.id === "png") !== -1;
+
+    function downloadPNG(): void {
+        if (!png_renderer_available) {
+            console.log('Fallback PNG render from SVG client side.');
+            downloadImgPNG(get_image_element(), 'plot.png');
+            return;
+        }
+        downloadURL($httpgd.getPlotURL({
+            width: $plot_width,
+            height: $plot_height,
+            zoom: $zoom_factor,
+            download: 'plot.png',
+            id: $httpgd_selected_plot,
+            renderer: 'png',
+        }));
+        
+    }
+
+    function copyPNG(): void {
+        if (!png_renderer_available) {
+            console.log('Fallback PNG render from SVG client side.');
+            copyImgSVGasPNG(get_image_element());
+            return;
+        }
+
+        copyClipboardPNG($httpgd.getPlotURL({
+            width: $plot_width,
+            height: $plot_height,
+            zoom: $zoom_factor,
+            id: $httpgd_selected_plot,
+            renderer: 'png',
+        }))
+    }
+
+    
+    let shortcuts = new KbdShortcutRegisty([
+            {
+                keys: [37, 40],
+                f: () => plots_navigate(-1),
+            },
+            {
+                keys: [39, 38],
+                f: () => plots_navigate(1),
+            },
+            {
+                keys: [78],
+                f: () => plots_navigate_newest(),
+            },
+            {
+                keys: [187],
+                f: () => zoom(1),
+            },
+            {
+                keys: [189],
+                f: () => zoom(-1),
+            },
+            {
+                keys: [48],
+                f: () => zoomReset(),
+            },
+            {
+                altKey: true,
+                keys: [68],
+                f: () => clear_plots(),
+            },
+            {
+                keys: [46, 68],
+                f: () => remove_selected(),
+            },
+            {
+                keys: [83],
+                f: () => downloadSVG(),
+            },
+            {
+                keys: [80],
+                f: () => downloadPNG(),
+            },
+            {
+                keys: [67],
+                f: () => copyPNG(),
+            },
+            {
+                keys: [72],
+                f: () => open_export_dialog(),
+            },
+            {
+                keys: [69],
+                f: () => open_export_dialog(),
+            },
+        ]);
+
+    function handleKeydown(ev: KeyboardEvent) {
+        if (export_dialog_visible()) return;
+        shortcuts.handle(ev);
+    }
+
+    function close_drop_and(f: () => void) {
+        return () => {
+            hideDropdown();
+            f();
+        };
     }
 </script>
 
-<div id="toolbar">
+<svelte:window on:keydown={handleKeydown} />
+
+<div id="toolbar" class:fadeout>
     <div id="tb-tools">
         <span>
-            <ToolbarItem title="Previous" shortcut="&larr;"
+            <ToolbarItem
+                title="Previous"
+                shortcut="&larr;"
+                on:click={() => plots_navigate(-1)}
                 >{@html iconArrowLeft}</ToolbarItem
             >
-            <ToolbarItem title="Newest" shortcut="N"
-                >{`${plot_index || 0}/${plot_count || 0}`}</ToolbarItem
+            <ToolbarItem
+                title="Newest"
+                shortcut="N"
+                on:click={plots_navigate_newest}
+                >{plot_index_nav_string}</ToolbarItem
             >
-            <ToolbarItem title="Next" shortcut="&rarr;"
+            <ToolbarItem
+                title="Next"
+                shortcut="&rarr;"
+                on:click={() => plots_navigate(1)}
                 >{@html iconArrowRight}</ToolbarItem
             >
         </span>
         <span>
-            <ToolbarItem title="Zoom out" shortcut="-"
+            <ToolbarItem title="Zoom out" shortcut="-" on:click={() => zoom(-1)}
                 >{@html iconMagnifyMinus}</ToolbarItem
             >
-            <ToolbarItem title="Reset zoom" shortcut="0">100%</ToolbarItem>
-            <ToolbarItem title="Zoom in" shortcut="+"
+            <ToolbarItem
+                title="Reset zoom"
+                shortcut="0"
+                on:click={() => zoomReset()}>{$zoom_percent}</ToolbarItem
+            >
+            <ToolbarItem title="Zoom in" shortcut="+" on:click={() => zoom(1)}
                 >{@html iconMagnifyPlus}</ToolbarItem
             >
         </span>
         <span>
-            <ToolbarItem title="Delete" shortcut="D"
+            <ToolbarItem title="Delete" shortcut="D" on:click={remove_selected}
                 >{@html iconCross}</ToolbarItem
             >
         </span>
         <span
             class="drop"
+            class:dropopen
             on:mouseenter={showDropdown}
             on:mouseleave={hideDropdown}
         >
@@ -70,32 +245,50 @@
             </span>
             <ul>
                 <li>
-                    <ToolbarListItem title="Download SVG" shortcut="S"
+                    <ToolbarListItem
+                        title="Download SVG"
+                        shortcut="S"
+                        on:click={close_drop_and(downloadSVG)}
                         >{@html iconDownload}</ToolbarListItem
                     >
                 </li>
                 <li>
-                    <ToolbarListItem title="Download PNG" shortcut="P"
+                    <ToolbarListItem
+                        title="Download PNG"
+                        shortcut="P"
+                        on:click={close_drop_and(downloadPNG)}
                         >{@html iconImage}</ToolbarListItem
                     >
                 </li>
                 <li>
-                    <ToolbarListItem title="Copy PNG" shortcut="C"
+                    <ToolbarListItem
+                        title="Copy PNG"
+                        shortcut="C"
+                        on:click={close_drop_and(copyPNG)}
                         >{@html iconCopy}</ToolbarListItem
                     >
                 </li>
                 <li>
-                    <ToolbarListItem title="Clear all plots" shortcut="Alt+D"
+                    <ToolbarListItem
+                        title="Clear all plots"
+                        shortcut="Alt+D"
+                        on:click={close_drop_and(clear_plots)}
                         >{@html iconTrash}</ToolbarListItem
                     >
                 </li>
                 <li>
-                    <ToolbarListItem title="Export" shortcut="E"
-                        on:click="{click_export}">{@html iconExport}</ToolbarListItem
+                    <ToolbarListItem
+                        title="Export"
+                        shortcut="E"
+                        on:click={close_drop_and(open_export_dialog)}
+                        >{@html iconExport}</ToolbarListItem
                     >
                 </li>
                 <li>
-                    <ToolbarListItem title="Show history" shortcut="H"
+                    <ToolbarListItem
+                        title="Show history"
+                        shortcut="H"
+                        on:click={close_drop_and(toggle_sidebar)}
                         >{@html iconHamburger}</ToolbarListItem
                     >
                 </li>
@@ -151,7 +344,7 @@
         fill: $warn-color;
     }
 
-    .fade-out {
+    .fadeout {
         opacity: 0;
         transform: translateY(-100px);
         transition: opacity 0.5s, transform 0.5s step-end 0.5s;
@@ -181,7 +374,7 @@
         }
     }
 
-    :global(.drop-open ul) {
+    .dropopen :global(ul) {
         transform: scale(1) !important;
     }
 

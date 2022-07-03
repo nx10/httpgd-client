@@ -4,10 +4,14 @@
 	import Overlay from "./components/Overlay.svelte";
 	import Sidebar from "./components/Sidebar.svelte";
 	import PlotView from "./components/PlotView.svelte";
+	
+    const DELAY_FADE_OUT: number = 4000;
 
-	import { httpgd, plots, selected_plot } from './stores.js';
+	import { httpgd, httpgd_plots, httpgd_selected_plot, httpgd_connected, httpgd_renderers, show_sidebar } from './stores.js';
 
 	import { Httpgd } from "httpgd";
+import { Timer } from "./utils";
+import { onDestroy } from "svelte";
 
 	const sparams = new URL(window.location.href).searchParams;
 
@@ -20,29 +24,50 @@
 		: false;
 	
 
-	httpgd.subscribe((httpgd) => {
+	onDestroy(httpgd.subscribe((httpgd) => {
 		if (!httpgd) { return; }
 		httpgd.onPlotsChanged((newState) => {
-			$plots = newState;
+			$httpgd_plots = newState;
 			if (newState?.plots.length > 0) {
-				$selected_plot = newState.plots[newState.plots.length-1].id;
+				$httpgd_selected_plot = newState.plots[newState.plots.length-1].id;
 			}
+		});
+		httpgd.onConnectionChanged((connected) => {
+			$httpgd_connected = connected;
 		});
 		httpgd.connect().then(() => {
 			console.log("Connected to " + httpgd.getInfo().version);
+			$httpgd_renderers = httpgd.getRenderers();
+		}).catch((error) => {
+			console.log(error);
 		});
-	});
+	}));
 
 	$httpgd = new Httpgd(hgd, token, ws);
 
-	let showExportDialog = true;
+
+	let fadeout_toolbar = false;
+
+	const fadeout_timer = new Timer(() => fadeout_toolbar = true, DELAY_FADE_OUT);
+	onDestroy(() => fadeout_timer.stop());
+
+	fadeout_timer.start();
+
+	function mousemove() {
+		fadeout_toolbar = false;
+		fadeout_timer.restart();
+	}
+	function mouseleave() {
+		fadeout_timer.finish();
+	}
+
 </script>
 
 <div id="container">
 	<Overlay />
 	<ExportDialog />
-	<div id="plotarea">
-		<Toolbar />
+	<div id="plotarea" class:nohist={!$show_sidebar} on:mousemove={() => mousemove()} on:mouseleave={() => mouseleave()}>
+		<Toolbar bind:fadeout={fadeout_toolbar}/>
 		<!-- <div class="loader"></div> -->
 		<PlotView />
 	</div>

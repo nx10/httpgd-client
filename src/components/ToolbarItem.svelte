@@ -3,7 +3,7 @@
     export let shortcut: string;
 </script>
 
-<span title={`${title} (${shortcut})`} class="tooltip">
+<span title={`${title} (${shortcut})`} class="tooltip" on:click>
     <slot />
     <span class="tooltiptext">{title}</span>
 </span>

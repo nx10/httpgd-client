@@ -1,47 +1,82 @@
-<script lang="ts">
-    import { onMount } from 'svelte';
-	import type { HttpgdPlotId } from "httpgd/lib/types";
-	import { httpgd, plots, selected_plot } from "../stores";
-	import { TimedCallLimiterQueued } from "../utils";
+<script context="module" lang="ts">
+    let IMAGE_ELEMENT: HTMLImageElement = null;
 
-    let width = 600;
-    let height = 400;
+    export function set_image_element(img: HTMLImageElement) {
+        IMAGE_ELEMENT = img;
+    }
+
+    export function get_image_element() {
+        return IMAGE_ELEMENT;
+    }
+</script>
+
+<script lang="ts">
+    import { onDestroy, onMount } from "svelte";
+    import type { HttpgdPlotId } from "httpgd/lib/types";
+    import {
+        httpgd,
+        httpgd_selected_plot,
+        show_sidebar,
+        zoom_factor,
+        plot_height,
+        plot_width,
+    } from "../stores";
+    import { TimedCallLimiterQueued, Timer } from "../utils";
+
+    const COOLDOWN_RESIZE: number = 200;
+
     let img_element: HTMLImageElement;
+    let stretch: boolean = false;
 
     function resize_to_img() {
         if (!img_element) return;
         const rect = img_element.getBoundingClientRect();
-        width = rect.width;
-        height = rect.height;
+        $plot_width = rect.width;
+        $plot_height = rect.height;
     }
 
     onMount(async () => {
-		resize_to_img();
-	});
+        set_image_element(img_element);
+        resize_to_img();
+    });
 
-    $: plot_url = $httpgd?.getPlotURL({ id: $selected_plot, width: width, height: height }) || 'plot-none.svg';
+    $: plot_url =
+        $httpgd?.getPlotURL({
+            id: $httpgd_selected_plot,
+            width: $plot_width,
+            height: $plot_height,
+            zoom: $zoom_factor
+        }) || "plot-none.svg";
 
     const resize = new TimedCallLimiterQueued(() => {
         resize_to_img();
-    }, 200);
+    }, COOLDOWN_RESIZE);
 
+    // Time resize after sidebar toggle animation
+    const sidebar_toggle_timer = new Timer(() => resize_to_img(), 302);
 
-    $: {
-        console.log(plot_url);
-    }
-
+    onDestroy(
+        show_sidebar.subscribe(() => {
+            sidebar_toggle_timer.restart();
+        })
+    );
 </script>
 
-<svelte:window on:resize={() => resize.call()}/>
+<svelte:window on:resize={() => resize.call()} />
 
-<img id="drawing" alt="Plot" crossorigin="anonymous" src="{plot_url}" bind:this={img_element} />
+<img
+    class:stretch
+    alt="Plot"
+    crossorigin="anonymous"
+    src={plot_url}
+    bind:this={img_element}
+/>
 
 <style lang="scss">
-    @import "../style_vars";
+    //@import "../style_vars";
 
-    #drawing {
+    img {
         width: 100%;
         height: 100%;
-        background-color: brown;
     }
 </style>

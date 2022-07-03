@@ -1,16 +1,24 @@
 <script lang="ts">
     import type { HttpgdPlotId } from "httpgd/lib/types";
-    import { httpgd, plots, selected_plot } from "../stores";
-
-    let plot_id: HttpgdPlotId = null;
-
-    $: {
-        const p = $plots?.plots;
-        if (p && p.length > 0) plot_id = p[0].id;
-    }
+    import { onDestroy } from "svelte";
+    import {
+        httpgd,
+        httpgd_plots,
+        httpgd_selected_plot,
+        show_sidebar,
+        plot_width,
+        plot_height,
+        zoom_factor,
+    } from "../stores";
+    import { get_image_element } from "./PlotView.svelte";
 
     function plot_url(id: HttpgdPlotId) {
-        return $httpgd?.getPlotURL({ id: id });
+        return $httpgd?.getPlotURL({
+                    id: id,
+                    width: 400,
+                    height: 350,
+                    zoom: 1,
+                });
     }
 
     function remove_plot(id: HttpgdPlotId) {
@@ -18,18 +26,26 @@
     }
 
     function select_plot(id: HttpgdPlotId) {
-        console.log('aa');
-        $selected_plot = id;
+        $httpgd_selected_plot = id;
     }
 
 </script>
 
-<div class="history" id="sidebar">
-    {#if $plots}
-        {#each $plots.plots as { id } (id)}
-            <div class="history-item {$selected_plot === id ? "history-selected" : ""}">
-                <img src={plot_url(id)} on:click="{() => select_plot(id)}" alt="thumbnail" />
-                <span on:click="{() => remove_plot(id)}">&#10006;</span>
+<div class="history" class:nohist={!$show_sidebar} id="sidebar">
+    {#if $httpgd_plots}
+        {#each $httpgd_plots.plots as { id } (id)}
+            <div
+                class="history-item {$httpgd_selected_plot === id
+                    ? 'history-selected'
+                    : ''}"
+            >
+                <img
+                    src={plot_url(id)}
+                    on:click={() => select_plot(id)}
+                    alt="thumbnail"
+                />
+                <span on:click={() => remove_plot(id)}>&#10006;</span>
+                <span class="thumbid" on:click={() => select_plot(id)}>{id}</span>
             </div>
         {/each}
     {/if}
@@ -78,9 +94,36 @@
             padding: 0px 4px 0px 0px;
             margin: -2px 0px 0px 0px;
             display: none;
-        }
-        span:hover {
-            color: $warn-color;
+
+            &:hover {
+                color: $warn-color;
+            }
+
+            &.thumbid {
+                font-family: $font-family;
+                font-size: 16px;
+                bottom: 0;
+                left: 0;
+                top: auto;
+                right: auto;
+                //position: relative;
+
+                //margin: 3px;
+                //margin-right: 300px ;
+                width: calc(100% - 4px);
+                //box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+        
+                text-align: center;
+                
+                color: rgba(255, 255, 255, 1);
+                background-color: rgba(0,0,0, 0.4);
+
+                &:hover {
+                color: rgba(255, 255, 255, 1);
+                background-color: rgba(0,0,0, 0.4);
+                }
+            }
+
         }
 
         &:hover {
@@ -93,5 +136,10 @@
 
     .history-selected {
         outline: rgba(0, 119, 204, 0.3) solid 3px;
+
+        .thumbid {
+                color: rgba(255, 255, 255, 1);
+                background-color: rgb(65, 144, 201) !important;
+        }
     }
 </style>

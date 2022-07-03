@@ -171,3 +171,51 @@ export class TimedCallLimiterQueued<F extends (...args: any[]) => any> {
         return this.call_fun(...args);
     }
 }
+
+
+export class Timer<F extends (...args: any[]) => any> {
+    private fun: F;
+    private ms: number;
+    private running: boolean = false;
+    private last_handle: any;
+
+    constructor(fun: F, ms: number) {
+        this.fun = fun;
+        this.ms = ms;
+    }
+
+    private start_timeout(...args: Parameters<F>) {
+        this.running = true;
+        this.last_handle = setTimeout(() => {
+            this.fun(...args);
+            this.running = false;
+        }, this.ms);
+    }
+
+    private clear_timeout() {
+        if (this.running) {
+            clearTimeout(this.last_handle);
+            this.running = false;
+        }
+    }
+
+    public start(...args: Parameters<F>) {
+        if (!this.running) {
+            this.start_timeout(...args);
+        }
+    }
+    
+    public restart(...args: Parameters<F>) {
+        this.clear_timeout();
+        this.start_timeout(...args);
+    }
+
+    public finish(...args: Parameters<F>): ReturnType<F> {
+        this.clear_timeout();
+        return this.fun(...args);
+    }
+
+    public stop() {
+        this.clear_timeout();
+    }
+}

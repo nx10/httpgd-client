@@ -1,17 +1,23 @@
 <script lang="ts">
+	import { httpgd_connected } from '../stores';
+
+	$: invisible = !$httpgd_connected;
 </script>
 
-<div id="overlay">
-    <div id="overlay-text" />
+<div id="overlay" class:invisible>
+    <div id="overlay-text">Disconnected</div>
 </div>
 
 
 <style lang="scss">
 	@import '../style_vars';
 
+	.invisible {
+		display: none;
+	}
+
 	#overlay {
 		position: fixed;
-		display: none;
 		width: 100%;
 		height: 100%;
 		background-color: rgba(92, 92, 92, 0.685);
